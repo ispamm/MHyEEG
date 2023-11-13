@@ -1,0 +1,8 @@
+mne==1.5.1
+numpy==1.26.2
+pandas==2.1.3
+scikit_learn==1.3.2
+scipy==1.11.3
+torch==2.0.0+cu117
+tqdm==4.66.1
+wandb==0.16.0

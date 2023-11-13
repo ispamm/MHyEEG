@@ -3,7 +3,8 @@ import os
 import xml.etree.ElementTree as ET
 import mne
 import pandas as pd
-import numpy as np 
+import numpy as np
+from tqdm import tqdm 
 
 def list_files(directory, sorted_dir):
     """List all files (i.e. their paths) in the dataset directory. Need sorted argument
@@ -19,15 +20,8 @@ def list_files(directory, sorted_dir):
         files.append(single)
     return files
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--sessions_path', type=str)
-    parser.add_argument('--save_path', type=str)
-    args = parser.parse_args()
-
-    sessions_dir = list_files(args.sessions_path, sorted_dir=True)
-
-    for dir_id in range(len(sessions_dir)):
+def preprocess(sessions_dir, save_path, verbose=False):
+    for dir_id in tqdm(range(len(sessions_dir)), desc='Preprocessing'):
         dir = sessions_dir[dir_id]
 
         # SESSION.XML --------------------------------------------------------------
@@ -43,13 +37,15 @@ if __name__ == '__main__':
         # Get subject infos
         session = root.attrib['cutNr']
         subject = root[0].attrib['id']
-        print("\033[94mCurrently considerig sub:{}, session:{}\033[0m".format(subject, session))
-
+        
+        if verbose:
+            print("\033[94mCurrently considerig sub:{}, session:{}\033[0m".format(subject, session))
+        
         # PHYSIOLOGICAL DATA -------------------------------------------------------
         physio_file = os.path.join(dir, "Part_{}_S_Trial{}_emotion.bdf".format(subject, int(session)//2))
-        raw = mne.io.read_raw_bdf(physio_file, preload=True)
+        raw = mne.io.read_raw_bdf(physio_file, preload=True, verbose=verbose)
         # documentation for mne raw: https://mne.tools/1.0/auto_tutorials/raw/10_raw_overview.html#sphx-glr-auto-tutorials-raw-10-raw-overview-py
-
+        
         # Get general info from file
         n_time_samps = raw.n_times  # number of samples
         time_secs = raw.times  # corresponding second [s] of each sample
@@ -62,7 +58,7 @@ if __name__ == '__main__':
         # Resample all data from 256 Hz to 128 Hz, passing status channels as stimuli
         # documentation: https://mne.tools/0.24/auto_tutorials/preprocessing/30_filtering_resampling.html
         # OBS: this function applies first a brick-wall filter at the Nyquist frequency of the desired new sampling rate (i.e. 64Hz)
-        raw = raw.resample(sfreq=128, stim_picks=46)
+        raw = raw.resample(sfreq=128, stim_picks=46, verbose=verbose)
 
         # Get status channel to extract video's initial and ending samples (to remove baseline pre/post-stimulus)
         status_ch, time = raw[-1]  # extract last channel
@@ -80,37 +76,37 @@ if __name__ == '__main__':
 
         # PREPROCESSING 
         # EEG ------------------------------------------------------------------------------------------- 
-        raw_eeg = raw.copy().pick_channels(EEG_CH)
+        raw_eeg = raw.copy().pick_channels(EEG_CH, verbose=verbose)
         # Referencing to average reference 
         # documentation: https://mne.tools/dev/generated/mne.set_eeg_reference.html
-        raw_eeg = raw_eeg.set_eeg_reference(ref_channels='average')
+        raw_eeg = raw_eeg.set_eeg_reference(ref_channels='average', verbose=verbose)
         # Artifact removal and filtering  
         # documentation: https://mne.tools/0.24/auto_tutorials/preprocessing/30_filtering_resampling.html
         # Power line at 50 Hz, as proved with plots below
         # Band pass FIR filter from 1 - 45 Hz => still need to apply notch filter at 50Hz,
         # since the filter is not acting upon the 50Hz component (neglectable attenuation)
-        raw_eeg = raw_eeg.notch_filter(50)
-        raw_eeg = raw_eeg.filter(l_freq=1,  h_freq=45)
+        raw_eeg = raw_eeg.notch_filter(50, verbose=verbose)
+        raw_eeg = raw_eeg.filter(l_freq=1,  h_freq=45, verbose=verbose)
         # OBS the order between notch and bandpass filter is inrelevant (TRIED)
         # EOG removal: not considered for now, TODO?
         # ECG -------------------------------------------------------------------------------------------
-        raw_ecg = raw.copy().pick_channels(ECG_CH)
+        raw_ecg = raw.copy().pick_channels(ECG_CH, verbose=verbose)
         # Artifact removal and filtering  
         # documentation: https://mne.tools/0.24/auto_tutorials/preprocessing/30_filtering_resampling.html
         # Power line at 50 Hz, as proved with plots below
         # Band pass FIR filter from 0.5 - 45 Hz => still need to apply notch filter at 50Hz,
         # since the filter is not acting upon the 50Hz component (neglectable attenuation)
-        raw_ecg = raw_ecg.notch_filter(50)
-        raw_ecg = raw_ecg.filter(l_freq=0.5,  h_freq=45)
+        raw_ecg = raw_ecg.notch_filter(50, verbose=verbose)
+        raw_ecg = raw_ecg.filter(l_freq=0.5, h_freq=45, verbose=verbose)
         # OBS the order between notch and bandpass filter is inrelevant (TRIED)
         # GSR -------------------------------------------------------------------------------------------
-        raw_gsr = raw.copy().pick_channels([GSR_CH])
+        raw_gsr = raw.copy().pick_channels([GSR_CH], verbose=verbose)
         # Artifact removal and filtering  
         # documentation: https://mne.tools/0.24/auto_tutorials/preprocessing/30_filtering_resampling.html
         # Power line at 50 Hz, as proved with plots below
         # Low pass FIR filter at 60 Hz => still need to apply notch filter at 50Hz
-        raw_gsr = raw_gsr.notch_filter(50)
-        raw_gsr = raw_gsr.filter(l_freq=None,  h_freq=60)
+        raw_gsr = raw_gsr.notch_filter(50, verbose=verbose)
+        raw_gsr = raw_gsr.filter(l_freq=None, h_freq=60, verbose=verbose)
         # OBS the order between notch and bandpass filter is inrelevant (TRIED)
 
         # Extract data (removing baseline pre/post-stimulus)
@@ -227,7 +223,7 @@ if __name__ == '__main__':
                 mean_eye_dist.append(-1)
 
         # SAVE CURRENT TRIAL IN NEW DATASET (IN CSV FORMAT) ------------------------
-        path_name = os.path.join(args.save_path, 'S'+f"{int(subject):02}")
+        path_name = os.path.join(save_path, 'S'+f"{int(subject):02}")
         if not os.path.exists(path_name):
                 os.makedirs(path_name)
                 
@@ -244,5 +240,15 @@ if __name__ == '__main__':
             f = open(label_file_name, 'a+')  # open file in append mode, create if not exists
             f.write(trial_labels[i] + "\n")
             f.close()
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sessions_path', type=str, default='hci-tagging-database/Sessions', help='Path to Sessions folder')
+    parser.add_argument('--save_path', type=str, default='hci-tagging-database/preproc_data', help='Path to save preprocessed data')
+    parser.add_argument('--verbose',  type=bool, action=argparse.BooleanOptionalAction, default=False)
+    args = parser.parse_args()
+
+    sessions_dir = list_files(args.sessions_path, sorted_dir=True)
+    preprocess(sessions_dir, args.save_path, args.verbose)
 
     

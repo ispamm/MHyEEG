@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from earlystopping import EarlyStopping
 from models.hypercomplex_layers import PHConv
 import torch
@@ -13,7 +14,7 @@ class Trainer():
                       checkpoint_folder="./checkpoints",
                       max_lr=0.1, min_mom=0.7,
                       max_mom=0.99, l1_reg=False,
-                      num_classes=1,
+                      num_classes=3,
                       sample_weights=None):
 
         self.optimizer = optimizer
@@ -72,8 +73,7 @@ class Trainer():
             
             self.net.train()  # switch net to training setting 
            
-            for i, data in enumerate(train_loader, 0):  # for each batch
-                inputs, labels = data
+            for inputs, labels in tqdm(train_loader, total=len(train_loader), desc='Train round', unit='batch', leave=False):  # for each batch
                 eye, gsr, eeg, ecg = inputs  # Tensors
 
                 if self.use_cuda:
@@ -121,8 +121,7 @@ class Trainer():
                 
             # since we're not training, we don't need to calculate the gradients for our outputs
             with torch.no_grad():
-                for j, eval_data in enumerate(eval_loader, 0):  # for each batch
-                    inputs, labels = eval_data
+                 for inputs, labels in tqdm(eval_loader, total=len(eval_loader), desc='Val round', unit='batch', leave=False):   # for each batch
                     eye, gsr, eeg, ecg = inputs  # Tensors
 
                     if self.use_cuda:
@@ -145,15 +144,15 @@ class Trainer():
             f1 = f1_score(y_true, y_pred, average='macro')
 
             # Log metrics
-            wandb.log({"train loss": running_loss_train/(i+1), "train acc": train_acc, "train f1": train_f1,
-                           "val loss": running_loss_eval/(j+1), "val acc": acc, "val f1": f1})
+            wandb.log({"train loss": running_loss_train/len(train_loader), "train acc": train_acc, "train f1": train_f1,
+                           "val loss": running_loss_eval/len(eval_loader), "val acc": acc, "val f1": f1})
 
             print('Epoch {:03d}: Loss {:.4f}, Accuracy {:.4f}, F1 score {:.4f} || Val Loss {:.4f}, Val Accuracy {:.4f}, Val F1 score {:.4f}  [Time: {:.4f}]'
-                  .format(epoch + 1, running_loss_train/(i+1), train_acc, train_f1, running_loss_eval/(j+1), acc, f1, end-start))
+                  .format(epoch + 1, running_loss_train/len(train_loader), train_acc, train_f1, running_loss_eval/len(eval_loader), acc, f1, end-start))
             
             if f1 > best_f1:
                 best_f1 = f1
-                best_loss = running_loss_eval/(j+1)
+                best_loss = running_loss_eval/len(eval_loader)
                 best_acc = acc
 
             # Early stopping

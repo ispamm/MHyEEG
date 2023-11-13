@@ -7,6 +7,8 @@ from sklearn.model_selection import train_test_split
 from scipy import signal
 import copy
 
+from tqdm import tqdm
+
 def set_seed(seed: int = 42) -> None:
     np.random.seed(seed)
     random.seed(seed)
@@ -45,7 +47,7 @@ class DatasetCreator:
         sample_len: length in seconds of each generated sample.
         overlap: percentage of overlapping between samples."""
     def __init__(self, preproc_data, label_kind,
-                 physio_f, gaze_f, block_len, sample_len, overlap):
+                 physio_f, gaze_f, block_len, sample_len, overlap, verbose=False):
         self.preproc_data = preproc_data
         self.label_kind = label_kind
         self.physio_f = physio_f
@@ -53,25 +55,25 @@ class DatasetCreator:
         self.block_len = block_len
         self.sample_len = sample_len
         self.overlap = overlap
+        self.verbose = verbose
 
     def save_to_list(self):
         """Grabs data from hierarchical structure and unpacks all values.
-        Add gathered data to a list as as single sample."""
+        Add gathered data to a list as a single sample."""
         sub_dir = list_files(self.preproc_data, sorted_dir=False)
         data_list = []
         labels = []
-        for dir in sub_dir:  # for each subject/folder
+        for dir in tqdm(sub_dir, desc='Reading data'):  # for each subject/folder
             subj = int(dir[-2:])
-            print("Working on subject", subj)
 
             # Get labels for current subject and label kind
             all_labels = np.genfromtxt(os.path.join(dir, 'labels_felt{}.csv'  # return Dataframe
                                     .format(self.label_kind)), delimiter=',')
 
             # Get each original sample and create dataset samples
-            id_trials = [x.split("/")[-1].partition("_")[0] for x in list_files(dir, sorted_dir=False)] # get beggining of files
+            id_trials = [x.split("\\")[-1].partition("_")[0] for x in list_files(dir, sorted_dir=False)] # get beggining of files
             id_trials = sorted(np.unique(id_trials)[:-1], key=lambda x: int(x))  # remove duplicates, "label", and sort
-            for i, id in enumerate(id_trials):
+            for i, id in enumerate(tqdm(id_trials, desc=f'Subject {subj}')):
                 pupil_data = np.genfromtxt(os.path.join(dir, '{}_PUPIL.csv'
                                     .format(id)), delimiter=',')
                 gaze_data = np.genfromtxt(os.path.join(dir, '{}_GAZE_COORD.csv'
@@ -110,7 +112,8 @@ class DatasetCreator:
                     gsr = gsr_data[k : k + n_points_sample_physio]
                     eeg = eeg_data[k : k + n_points_sample_physio]
                     ecg = ecg_data[k : k + n_points_sample_physio]
-
+                    
+                   
                     if (len(pupil) != n_points_sample_gaze or len(gaze_coord) != n_points_sample_gaze or len(eye_dist) != n_points_sample_gaze or
                         len(gsr) != n_points_sample_physio or len(eeg) != n_points_sample_physio or len(ecg) != n_points_sample_physio):
                         # sanity check on the samples
@@ -121,8 +124,9 @@ class DatasetCreator:
                     clean_gaze_coord = gaze_coord[gaze_coord != -1]
                     clean_eye_dist = eye_dist[eye_dist != -1]
                     if len(clean_pupil)/len(pupil) < 0.6 or len(clean_gaze_coord)/len(gaze_coord) < 0.6 or len(clean_eye_dist)/len(eye_dist) < 0.6:
-                        print("\033[93mGaze segment too noisy for subject: {}, sample: {}, segment:{}!\033[0m"
-                                .format(subj, id, str(j//(n_points_sample_gaze - overlap_step_gaze))))
+                        if self.verbose:
+                            print("\033[93mGaze segment too noisy for subject: {}, sample: {}, segment:{}!\033[0m"
+                                    .format(subj, id, str(j//(n_points_sample_gaze - overlap_step_gaze))))
                         continue
 
                     # Create single variable containing all gaze information
@@ -144,7 +148,6 @@ class DatasetCreator:
                     labels.append(label)
 
         return data_list, labels
-
 
 def std_for_SNR(signal, noise, snr):
     '''Compute the gain to be applied to the noise to achieve the given SNR in dB'''
@@ -220,32 +223,39 @@ def load_dataset(data, labels, scaling, noise, m, SNR):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path_to_csv', type=str)
-    parser.add_argument('--save_path', type=str)
-    parser.add_argument('--label_kind', type=str, default='Vlnc', help="Choose valence (Vlnc) or arousal (Arsl) label")
+    parser.add_argument('--preproc_data_path', type=str, default='hci-tagging-database/preproc_data', help='Path to folder where preprocessed data was saved')
+    parser.add_argument('--save_path', type=str, default='hci-tagging-database/torch_datasets', help='Path to save .pt files')
+    parser.add_argument('--label_kind', type=str, default='Arsl', help="Choose valence (Vlnc) or arousal (Arsl) label")
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--verbose', type=bool, action=argparse.BooleanOptionalAction, default=False)
     args = parser.parse_args()
 
     assert args.label_kind in ["Arsl", "Vlnc"]
+    print("Creating dataset for label: ", args.label_kind)
 
     set_seed(args.seed)
 
-    d = DatasetCreator(args.path_to_csv, args.label_kind, physio_f = 128, gaze_f = 60, block_len = 30, sample_len=10, overlap = 0)  # create object
+    d = DatasetCreator(args.preproc_data_path, args.label_kind, physio_f = 128, gaze_f = 60, block_len = 30, sample_len=10, overlap = 0, verbose=args.verbose)  # create object
     data, labels = d.save_to_list()  # call method
+    print(len(data))
 
     test_size = 0.2
     X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=test_size, random_state=args.seed, stratify=labels)
     
+    # Augmentation
     m = 30 # Number of augmented signals for each original sample
     SNR = 5
 
     train_data = load_dataset(X_train, y_train, scaling=True, noise=True, m=m, SNR=SNR)
-    test_data = load_dataset(X_test, y_test, False, False, 1, None)
+    test_data = load_dataset(X_test, y_test, scaling=False, noise=False, m=1, SNR=None)
 
     print("Len train before augmentation: ", len(X_train))
     print("Len train after augmentation: ", len(train_data))
     print("Len test: ", len(test_data))
     print("Tot dataset: ", len(train_data) + len(test_data))
 
+    if not os.path.exists(args.save_path):
+        os.makedirs(args.save_path)
+        
     torch.save(train_data, f'{args.save_path}/train_augmented_data_{args.label_kind}.pt')
-    torch.save(test_data,  f'{args.save_path}/test_augmented_data_{args.label_kind}.pt')
+    torch.save(test_data,  f'{args.save_path}/test_data_{args.label_kind}.pt')

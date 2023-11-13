@@ -19,11 +19,11 @@ class MyDataset(torch.utils.data.Dataset):
         sample, label = self.data[idx]
         return sample, label
 
-def MyDataLoader(root, label_kind, batch_size, num_workers=1):
+def MyDataLoader(train_file, test_file, batch_size, num_workers=1):
     print("----Loading dataset----")
     
-    training = torch.load(root + f"/train_augmented_data_{label_kind}.pt")  # Loads an object saved with torch.save() from a file
-    validation = torch.load(root + f"/test_augmented_data_{label_kind}.pt")  # Loads an object saved with torch.save() from a file
+    training = torch.load(train_file)  # Loads an object saved with torch.save() from a file
+    validation = torch.load(test_file)  # Loads an object saved with torch.save() from a file
     
     train_dataset = MyDataset(training)
     eval_dataset = MyDataset(validation)

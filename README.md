@@ -4,9 +4,7 @@ Official PyTorch repository for Hypercomplex Multimodal Emotion Recognition from
 
 Elenora Lopez, Eleonora Chiarantano, [Eleonora Grassucci](https://sites.google.com/uniroma1.it/eleonoragrassucci/home-page) and [Danilo Comminiello](https://danilocomminiello.site.uniroma1.it/)
 
-[[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10193329)][[ArXiv Preprint](https://arxiv.org/abs/2204.05798)]
-
-This repository is under construction :hammer:
+[[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10193329)][[ArXiv Preprint](https://arxiv.org/abs/2310.07648)]
 
 ### Abstract :blush:
 
@@ -18,11 +16,28 @@ Multimodal emotion recognition from physiological signals is receiving an increa
 
 ### How to use :scream:
 
-:warning: Work in progress...
+#### Install requirements
+
+`pip install -r requirements.txt`
 
 #### Data preprocessing
 
+1) Download the data from the [official website](https://mahnob-db.eu/hci-tagging/).
+2) Preprocess the data: `python data/preprocessing.py`
+   - This will create a folder for each subject with CSV files containing the preprocessed data and save everything inside `args.save_path`.
+   
+4) Create torch files with augmented and split data: `python data/create_dataset.py`
+   - This performs data splitting and augmentation from the preprocessed data in step 2.
+   - You can specify which label to consider by setting the parameter `label_kind` to either `Arsl` or `Vlnc`.
+   - The data is saved as .pt files which are used for training.
+
 #### Training
+
+- To train with specific hyperparameters run: `python main.py`
+  - Optimal hyperparameters for arousal and valence can be found in the arguments descriprion.
+- To run a sweep run: `python sweep.py`
+
+Experiments will be directly tracked on [Weight&Biases](https://wandb.ai/).
 
 ### Cite
 

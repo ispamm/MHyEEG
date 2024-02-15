@@ -58,6 +58,6 @@ Please, cite our work if you found it useful.
 
 Check out:
 
-* Multi-View Breast Cancer Classification via Hypercomplex Neural Networks, _under review at TPAMI_, 2022 [[Paper](https://arxiv.org/abs/2204.05798)][[GitHub](https://github.com/ispamm/PHBreast/)]
+* Multi-View Breast Cancer Classification via Hypercomplex Neural Networks, _under review at TPAMI_, 2023 [[Paper](https://arxiv.org/abs/2204.05798)][[GitHub](https://github.com/ispamm/PHBreast/)]
 * PHNNs: Lightweight neural networks via parameterized hypercomplex convolutions, _IEEE Transactions on Neural Networks and Learning Systems_, 2022 [[Paper](https://ieeexplore.ieee.org/document/9983846)][[GitHub](https://github.com/elegan23/hypernets)].
-* Hypercomplex Image- to- Image Translation, _ICASSP_, 2022 [[Paper](https://ieeexplore.ieee.org/document/9892119)][[GitHub](https://github.com/ispamm/HI2I)]
+* Hypercomplex Image-to-Image Translation, _IJCNN_, 2022 [[Paper](https://ieeexplore.ieee.org/document/9892119)][[GitHub](https://github.com/ispamm/HI2I)]

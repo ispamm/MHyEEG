@@ -2,7 +2,7 @@
 
 Official PyTorch repository for Hypercomplex Multimodal Emotion Recognition from EEG and Peripheral Physiological Signals, ICASSPW 2023.
 
-Elenora Lopez, Eleonora Chiarantano, [Eleonora Grassucci](https://sites.google.com/uniroma1.it/eleonoragrassucci/home-page) and [Danilo Comminiello](https://danilocomminiello.site.uniroma1.it/)
+Eleonora Lopez, Eleonora Chiarantano, [Eleonora Grassucci](https://sites.google.com/uniroma1.it/eleonoragrassucci/home-page) and [Danilo Comminiello](https://danilocomminiello.site.uniroma1.it/)
 
 [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10193329)][[ArXiv Preprint](https://arxiv.org/abs/2310.07648)]
 

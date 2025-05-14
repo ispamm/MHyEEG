@@ -8,6 +8,7 @@ from scipy import signal
 import copy
 
 from tqdm import tqdm
+from preprocessing import list_files
 
 def set_seed(seed: int = 42) -> None:
     np.random.seed(seed)
@@ -20,20 +21,6 @@ def set_seed(seed: int = 42) -> None:
     # Set a fixed value for the hash seed
     os.environ["PYTHONHASHSEED"] = str(seed)
     print(f"Random seed set as {seed}")
-
-def list_files(directory, sorted_dir):
-    """List all files (i.e. their paths) in the dataset directory. Need sorted argument
-     when directories' names contain numbers having different number of digits """
-    files = []
-    if sorted_dir:
-        list_dir = sorted(os.listdir(directory), key=lambda filename: int(filename.split('.')[0]))  # key needed to get folder in numeric order
-    else:
-        list_dir = os.listdir(directory)
-    for filename in list_dir:
-        # if filename.endswith(".csv"):
-        single = os.path.join(directory, filename)
-        files.append(single)
-    return files
 
 class DatasetCreator:
     """loops over subject folders.
@@ -71,8 +58,9 @@ class DatasetCreator:
                                     .format(self.label_kind)), delimiter=',')
 
             # Get each original sample and create dataset samples
-            id_trials = [x.split("/")[-1].partition("_")[0] for x in list_files(dir, sorted_dir=False)] # get beggining of files
+            id_trials = [x.split(os.sep)[-1].partition("_")[0] for x in list_files(dir, sorted_dir=False)] # get beggining of files
             id_trials = sorted(np.unique(id_trials)[:-1], key=lambda x: int(x))  # remove duplicates, "label", and sort
+            
             for i, id in enumerate(tqdm(id_trials, desc=f'Subject {subj}')):
                 pupil_data = np.genfromtxt(os.path.join(dir, '{}_PUPIL.csv'
                                     .format(id)), delimiter=',')
@@ -86,7 +74,7 @@ class DatasetCreator:
                                      .format(id)), delimiter=',')
                 ecg_data = np.genfromtxt(os.path.join(dir, '{}_ECG.csv'
                                    .format(id)), delimiter=',')
-
+                
                 # Extract last <block_len> seconds for each data
                 n_points_block_gaze = self.block_len * self.gaze_f
                 n_points_block_physio = self.block_len * self.physio_f
@@ -113,7 +101,6 @@ class DatasetCreator:
                     eeg = eeg_data[k : k + n_points_sample_physio]
                     ecg = ecg_data[k : k + n_points_sample_physio]
                     
-                   
                     if (len(pupil) != n_points_sample_gaze or len(gaze_coord) != n_points_sample_gaze or len(eye_dist) != n_points_sample_gaze or
                         len(gsr) != n_points_sample_physio or len(eeg) != n_points_sample_physio or len(ecg) != n_points_sample_physio):
                         # sanity check on the samples

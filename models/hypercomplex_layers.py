@@ -17,6 +17,39 @@ import math
 ## STANDARD PHM LAYER ##
 ########################
 
+from torch.nn import Conv1d
+
+def get_kernel_and_weight_shape(operation, in_channels, out_channels, kernel_size):
+    if operation == 'convolution1d':
+        if type(kernel_size) is not int:
+            raise ValueError(
+                """An invalid kernel_size was supplied for a 1d convolution. The kernel size
+                must be integer in the case. Found kernel_size = """ + str(kernel_size)
+            )
+        else:
+            ks = kernel_size
+            w_shape = (out_channels, in_channels) + tuple((ks,))
+    else:# in case it is 2d or 3d.
+        if   operation == 'convolution2d' and type(kernel_size) is int:
+            ks = (kernel_size, kernel_size)
+        elif operation == 'convolution3d' and type(kernel_size) is int:
+            ks = (kernel_size, kernel_size, kernel_size)
+        elif type(kernel_size) is not int:
+            if   operation == 'convolution2d' and len(kernel_size) != 2:
+                raise ValueError(
+                    """An invalid kernel_size was supplied for a 2d convolution. The kernel size
+                    must be either an integer or a tuple of 2. Found kernel_size = """ + str(kernel_size)
+                )
+            elif operation == 'convolution3d' and len(kernel_size) != 3:
+                raise ValueError(
+                    """An invalid kernel_size was supplied for a 3d convolution. The kernel size
+                    must be either an integer or a tuple of 3. Found kernel_size = """ + str(kernel_size)
+                )
+            else:
+                ks = kernel_size
+        w_shape = (out_channels, in_channels) + (*ks,)
+    return ks, w_shape
+
 class PHMLinear(nn.Module):
 
   def __init__(self, n, in_features, out_features, cuda=True):
@@ -73,10 +106,10 @@ class PHMLinear(nn.Module):
 ## CONVOLUTIONAL PH LAYER ##
 #############################
 
-class PHConv(Module):
+class PHConv2d(Module):
 
   def __init__(self, n, in_features, out_features, kernel_size, padding=0, stride=1, cuda=True):
-    super(PHConv, self).__init__()
+    super(PHConv2d, self).__init__()
     self.n = n
     self.in_features = in_features
     self.out_features = out_features
@@ -121,6 +154,54 @@ class PHConv(Module):
     input = input.type(dtype=self.weight.type())
         
     return F.conv2d(input, weight=self.weight, stride=self.stride, padding=self.padding)
+
+  def extra_repr(self) -> str:
+    return 'in_features={}, out_features={}, bias={}'.format(
+      self.in_features, self.out_features, self.bias is not None)
+    
+  def reset_parameters(self) -> None:
+    init.kaiming_uniform_(self.A, a=math.sqrt(5))
+    init.kaiming_uniform_(self.F, a=math.sqrt(5))
+    fan_in, _ = init._calculate_fan_in_and_fan_out(self.placeholder)
+    bound = 1 / math.sqrt(fan_in)
+    init.uniform_(self.bias, -bound, bound)
+
+class PHConv1d(Module):
+
+  def __init__(self, n, in_features, out_features, kernel_size, padding=0, stride=1, cuda=True):
+    super(PHConv1d, self).__init__()
+    self.n = n
+    self.in_features = in_features
+    self.out_features = out_features
+    self.padding = padding
+    self.stride = stride
+    self.cuda = cuda
+
+    self.bias = nn.Parameter(torch.Tensor(out_features))
+    self.A = nn.Parameter(torch.nn.init.xavier_uniform_(torch.zeros((n, n, n))))
+    self.F = nn.Parameter(torch.nn.init.xavier_uniform_(
+        torch.zeros((n, self.out_features//n, self.in_features//n, kernel_size))))
+    self.weight = torch.zeros((self.out_features, self.in_features))
+    self.kernel_size = kernel_size
+
+    fan_in, _ = init._calculate_fan_in_and_fan_out(self.weight)
+    bound = 1 / math.sqrt(fan_in)
+    init.uniform_(self.bias, -bound, bound)
+
+  def kronecker_product1(self, A, F):
+    siz1 = torch.Size(torch.tensor(A.shape[-2:]) * torch.tensor(F.shape[-3:-1]))
+    siz2 = torch.Size(torch.tensor(F.shape[-1:]))
+    res = A.unsqueeze(-1).unsqueeze(-3).unsqueeze(-1) * F.unsqueeze(-3).unsqueeze(-5)
+    siz0 = res.shape[:1]
+    out = res.reshape(siz0 + siz1 + siz2)
+    return out
+
+  def forward(self, input):
+    self.weight = torch.sum(self.kronecker_product1(self.A, self.F), dim=0)
+
+    input = input.type(dtype=self.weight.type())
+        
+    return F.conv1d(input, weight=self.weight, stride=self.stride, padding=self.padding)
 
   def extra_repr(self) -> str:
     return 'in_features={}, out_features={}, bias={}'.format(

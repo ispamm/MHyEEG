@@ -1,6 +1,5 @@
 from tqdm import tqdm
 from earlystopping import EarlyStopping
-from models.hypercomplex_layers import PHConv
 import torch
 import time
 import torch.nn as nn
@@ -15,18 +14,22 @@ class Trainer():
                       max_lr=0.1, min_mom=0.7,
                       max_mom=0.99, l1_reg=False,
                       num_classes=3,
-                      sample_weights=None):
+                      sample_weights=None,
+                      es_mode='max',
+                      patience=10):
 
         self.optimizer = optimizer
         self.epochs = epochs
         self.use_cuda = use_cuda
         self.gpu_num = gpu_num
         self.checkpoints_folder = checkpoint_folder
-        self.max_lr = max_lr
+        # self.max_lr = max_lr
         self.min_mom = min_mom,
         self.max_mom = max_mom
         self.l1_reg = l1_reg
         self.num_classes = num_classes
+        self.es_mode = es_mode
+        self.patience = patience
 
         sample_weights = torch.tensor(sample_weights, dtype=torch.float32) if len(sample_weights)>0 else None
         self.criterion = nn.CrossEntropyLoss(weight=sample_weights)
@@ -42,17 +45,18 @@ class Trainer():
         else:
             self.net = net
 
-    def train(self, train_loader, eval_loader):
+    def train(self, train_loader, eval_loader, **sched_kwargs):
         
         # name for checkpoint
         run_name = wandb.run.name
 
         # initialize the early_stopping object
-        early_stopping = EarlyStopping(patience=20, path=self.checkpoints_folder + "/best_" + run_name + ".pt")
+        early_stopping = EarlyStopping(patience=self.patience, path=self.checkpoints_folder + "/best_" + run_name + ".pt", mode=self.es_mode)
 
-        scheduler = sched.OneCycleLR(self.optimizer, max_lr=self.max_lr, epochs=self.epochs, steps_per_epoch=len(train_loader), 
-                                         pct_start=0.425, anneal_strategy='linear', cycle_momentum=True, base_momentum=self.min_mom, max_momentum=self.max_mom, 
-                                         div_factor=10.0, three_phase=True, final_div_factor=10)
+        scheduler = sched.OneCycleLR(self.optimizer, epochs=self.epochs, steps_per_epoch=len(train_loader), 
+                                         anneal_strategy='linear', cycle_momentum=True, base_momentum=self.min_mom, max_momentum=self.max_mom, 
+                                         three_phase=True, **sched_kwargs)
+        # scheduler = sched.StepLR(self.optimizer, step_size=5, gamma=0.1)
         
         best_f1 = 0
         best_loss = 0
@@ -86,6 +90,7 @@ class Trainer():
                 loss = self.criterion(outputs, labels)
 
                 if self.l1_reg:
+                    print("Adding L1 regularization to A")
                     # Add L1 regularization to A
                     regularization_loss = 0.0
                     for child in self.net.children():
@@ -99,6 +104,7 @@ class Trainer():
                 loss.backward()  # computes dloss/dx, for every parameter x which has requires_grad=True, and save it into x.grad
                 self.optimizer.step()  # updates the value of x using the computed x.grad value
                 scheduler.step()
+                wandb.log({"lr_step": scheduler.get_last_lr()[0]})
 
                 running_loss_train += loss.item()  # save current loss to compute later a mean
 
@@ -145,7 +151,8 @@ class Trainer():
 
             # Log metrics
             wandb.log({"train loss": running_loss_train/len(train_loader), "train acc": train_acc, "train f1": train_f1,
-                           "val loss": running_loss_eval/len(eval_loader), "val acc": acc, "val f1": f1})
+                           "val loss": running_loss_eval/len(eval_loader), "val acc": acc, "val f1": f1, "lr": scheduler.get_last_lr()[0],
+                           "epoch": epoch+1})
 
             print('Epoch {:03d}: Loss {:.4f}, Accuracy {:.4f}, F1 score {:.4f} || Val Loss {:.4f}, Val Accuracy {:.4f}, Val F1 score {:.4f}  [Time: {:.4f}]'
                   .format(epoch + 1, running_loss_train/len(train_loader), train_acc, train_f1, running_loss_eval/len(eval_loader), acc, f1, end-start))
@@ -156,7 +163,10 @@ class Trainer():
                 best_acc = acc
 
             # Early stopping
-            early_stopping(f1, self.net)
+            if self.es_mode == 'max':
+                early_stopping(f1, self.net)
+            else:
+                early_stopping(running_loss_eval/len(eval_loader), self.net)
             if early_stopping.early_stop:
                 print(f"Early stopping")
                 break

@@ -1,0 +1,22 @@
+# Model
+model: "HyperFuseNet"
+n: 4 # For PHM layers
+dropout_rate: 0.2118
+
+# Training
+epochs: 60
+patience: 20
+train_batch_size: 8
+test_batch_size: 8
+
+# OneCycleLR scheduler params
+min_mom: 0.8314
+max_mom: 0.9735
+max_lr: 0.002489
+div_factor: 10
+final_div_factor: 10
+pct_start: 0.425
+
+# Early stopping
+es_mode: "max"
+patience: 10

@@ -1,0 +1,21 @@
+# Model
+model: "H2"
+dropout_rate: 0.5
+n_eeg: 10
+n_ecg: 3
+n_gsr: 1
+n_eye: 4
+
+# Training
+epochs: 50
+patience: 10
+train_batch_size: 64
+test_batch_size: 32
+
+# OneCycleLR scheduler params
+min_mom: 0.7403
+max_mom: 0.7985
+max_lr: 0.00000796
+div_factor: 10
+final_div_factor: 10
+pct_start: 0.425

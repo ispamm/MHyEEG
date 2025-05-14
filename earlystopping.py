@@ -21,6 +21,7 @@ class EarlyStopping:
             mode (str): 'min' to save model when metric decreases (e.g. loss), 'max' when it increases (e.g. accuracy).
                             Default: 'max'        
         """
+        assert mode in ['min', 'max'], "Mode must be 'min' or 'max'!"
         self.patience = patience
         self.verbose = verbose
         self.counter = 0

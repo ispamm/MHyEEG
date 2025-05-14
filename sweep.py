@@ -1,6 +1,6 @@
 import argparse
 from data.dataloader import MyDataLoader
-from models.model import HyperFuseNet
+from models.hyperfusenet import HyperFuseNet
 from training import Trainer
 import wandb
 import numpy as np

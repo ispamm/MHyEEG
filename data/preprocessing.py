@@ -9,11 +9,12 @@ from tqdm import tqdm
 def list_files(directory, sorted_dir):
     """List all files (i.e. their paths) in the dataset directory. Need sorted argument
      when directories' names contain numbers having different number of digits """
+    
+    list_dir = list(set(os.listdir(directory)) - {'desktop.ini'}) # remove google drive file
     files = []
     if sorted_dir:
-        list_dir = sorted(os.listdir(directory), key=lambda filename: int(filename.split('.')[0]))  # key needed to get folder in numeric order
-    else:
-        list_dir = os.listdir(directory)
+        list_dir = sorted(list_dir, key=lambda filename: int(filename.split('.')[0]))  # key needed to get folder in numeric order
+
     for filename in list_dir:
         # if filename.endswith(".csv"):
         single = os.path.join(directory, filename)
@@ -249,6 +250,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     sessions_dir = list_files(args.sessions_path, sorted_dir=True)
+    # print(sessions_dir[464])
+    
     preprocess(sessions_dir, args.save_path, args.verbose)
+    # preprocess(sessions_dir[464:], args.save_path, args.verbose) # most recent code had this
 
     

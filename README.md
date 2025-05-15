@@ -1,18 +1,30 @@
 ## Hypercomplex Multimodal Emotion Recognition from EEG and Peripheral Physiological Signals :performing_arts:
 
-Official PyTorch repository for Hypercomplex Multimodal Emotion Recognition from EEG and Peripheral Physiological Signals, ICASSPW 2023.
+Official PyTorch repository for the papers:
+1) Hypercomplex Multimodal Emotion Recognition from EEG and Peripheral Physiological Signals, ICASSPW 2023. [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10193329)][[ArXiv Preprint](https://arxiv.org/abs/2310.07648)]
+2) Hierarchical Hypercomplex Network for Multimodal Emotion Recognition, MLSP 2024. [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10734815)][[ArXiv Preprint](https://arxiv.org/abs/2409.09194)]
+3) PHemoNet: A Multimodal Network for Physiological Signals, RTSI 2024. [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10761462)][[ArXiv Preprint](https://arxiv.org/abs/2410.00010)]
 
-Eleonora Lopez, Eleonora Chiarantano, [Eleonora Grassucci](https://sites.google.com/uniroma1.it/eleonoragrassucci/home-page) and [Danilo Comminiello](https://danilocomminiello.site.uniroma1.it/)
+Authors: 
 
-[[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10193329)][[ArXiv Preprint](https://arxiv.org/abs/2310.07648)]
+Eleonora Lopez, Eleonora Chiarantano, [Eleonora Grassucci](https://sites.google.com/uniroma1.it/eleonoragrassucci/home-page), [Aurelio Uncini](https://www.uncini.com/), and [Danilo Comminiello](https://danilocomminiello.site.uniroma1.it/) from [ISPAMM Lab](https://sites.google.com/uniroma1.it/ispamm/) 🏘️
 
-### Abstract :blush:
+### 📰 News
+- [2025.05.15] Released pretrained weights 💣
+- [2025.05.14] Updated code with H2 and PHemoNet models from MLSP and RTSI papers! 👩🏻‍💻
+- [2024.07] Extension papers have been accepted at MLSP and RTSI 2024!
+- [2023.11.11] Code is available for HyperFuseNet! 👩🏼‍💻
+- [2023.04.14] The paper has been accepted for presentation at ICASSP workshop 2023 🎉!
 
-Multimodal emotion recognition from physiological signals is receiving an increasing amount of attention due to the impossibility to control them at will unlike behavioral reactions, thus providing more reliable information. Existing deep learning-based methods still rely on extracted handcrafted features, not taking full advantage of the learning ability of neural networks, and often adopt a single-modality approach, while human emotions are inherently expressed in a multimodal way. In this paper, we propose a hypercomplex multimodal network equipped with a novel fusion module comprising parameterized hypercomplex multiplications. Indeed, by operating in a hypercomplex domain the operations follow algebraic rules which allow to model latent relations among learned feature dimensions for a more effective fusion step. We perform classification of valence and arousal from electroencephalogram (EEG) and peripheral physiological signals, employing the publicly available database MAHNOB-HCI surpassing a multimodal state-of-the-art network.
+### Overview :blush:
 
-### HyperFuseNet :smirk:
+### 📚 Papers & Models
 
-<img src="method.png"/>
+| Model               | Paper                                                                                                                          | Arousal F1 | Arousal Acc | Valence F1 | Valence Acc | Highlights | Weights | 
+|----------------------|-------------------------------------------------------------------------------------------------------------------------------|------------|-------------|------------|-------------|------------|---------|
+| 🥇 **H2**           | MLSP 2024 [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10734815)][[ArXiv](https://arxiv.org/abs/2409.09194)]    | **0.557**  | **56.91**   | **0.685**  | **67.87** | Hierarchical model with PHC-based encoders in modality-specific domains, achieves **best performance** | [Arousal](https://drive.google.com/file/d/1xvC5mVaoHG2UINJv-jJ8_pR1R5f2z1oG/view?usp=sharing) - [Valence](https://drive.google.com/file/d/1tBTmbxswkNTa9e_7_1RPnRQZSD-Kr9vf/view?usp=sharing)
+| 🥈 **PHemoNet**     | RTSI 2024 [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10761462)][[ArXiv](https://arxiv.org/abs/2410.00010)]    | 0.401      | 42.54       | 0.505      | 50.77 | PHM-based encoders with modality-specifc domains and revised hypercomplex fusion module | [Arousal](https://drive.google.com/file/d/1d8tF93EtHXOmC0IOa_ID0gn9JYxAHxhF/view?usp=sharing) - [Valence](https://drive.google.com/file/d/1b-KUJ_mhJhSG8AAHBeqE_39e8z67nwiJ/view?usp=sharing)
+| 🥉 **HyperFuseNet** | ICASSPW 2023 [[IEEEXplore](https://ieeexplore.ieee.org/abstract/document/10193329)][[ArXiv](https://arxiv.org/abs/2310.07648)] | 0.397      | 41.56       | 0.436      | 44.30 | Introduces hypercomplex fusion module | [Arousal](https://drive.google.com/file/d/1VrOiBj2t_xwn-MIUPxSYVz_5gUZYhS6F/view?usp=sharing) - [Valence](https://drive.google.com/file/d/1XgqthdUTKYrWy7Vh10MceJVt94KN2DbU/view?usp=sharing)
 
 ### How to use :scream:
 
@@ -33,16 +45,49 @@ Multimodal emotion recognition from physiological signals is receiving an increa
 
 #### Training
 
-- To train with specific hyperparameters run: `python main.py`
-  - Optimal hyperparameters for arousal and valence can be found in the arguments descriprion.
-- To run a sweep run: `python sweep.py`
+To reproduce the results, use the corresponding configuration file for each model and task:
+
+- `configs/h2.yml` → H2 model
+- `configs/phemonet.yml` → PHemoNet
+- `configs/hyperfusenet_arousal.yml` → HyperFuseNet for valence
+- `configs/hyperfusenet_valence.yml` → HyperFuseNet for arousal
+
+Run training with:
+```
+python main.py --train_file_path /path/to/arsl_or_vlnc_train.pt --test_file_path /path/to/arsl_or_vlnc_test.pt --config configs/config.yml
+```
+
+To do a sweep (used in HyperFuseNet paper) run: `python sweep.py`
 
 Experiments will be directly tracked on [Weight&Biases](https://wandb.ai/).
 
 ### Cite
 
-Please, cite our work if you found it useful.
+Please cite our works if you found this repo useful 🫶
 
+- H2 model:
+```
+@inproceedings{lopez2024hierarchical,
+  title={Hierarchical hypercomplex network for multimodal emotion recognition},
+  author={Lopez, Eleonora and Uncini, Aurelio and Comminiello, Danilo},
+  booktitle={2024 IEEE 34th International Workshop on Machine Learning for Signal Processing (MLSP)},
+  pages={1--6},
+  year={2024},
+  organization={IEEE}
+}
+```
+- PHemoNet:
+```
+@inproceedings{lopez2024phemonet,
+  title={PHemoNet: A Multimodal Network for Physiological Signals},
+  author={Lopez, Eleonora and Uncini, Aurelio and Comminiello, Danilo},
+  booktitle={2024 IEEE 8th Forum on Research and Technologies for Society and Industry Innovation (RTSI)},
+  pages={260--264},
+  year={2024},
+  organization={IEEE}
+}
+```
+- HyperFuseNet:
 ```
 @inproceedings{lopez2023hypercomplex,
   title={Hypercomplex Multimodal Emotion Recognition from EEG and Peripheral Physiological Signals},
@@ -58,6 +103,6 @@ Please, cite our work if you found it useful.
 
 Check out:
 
-* Multi-View Breast Cancer Classification via Hypercomplex Neural Networks, _under review at TPAMI_, 2023 [[Paper](https://arxiv.org/abs/2204.05798)][[GitHub](https://github.com/ispamm/PHBreast/)]
+* Multi-view hypercomplex learning for breast cancer screening, _under review at TMI_, 2022 [[Paper](https://arxiv.org/abs/2204.05798)][[GitHub](https://github.com/ispamm/PHBreast/)]
 * PHNNs: Lightweight neural networks via parameterized hypercomplex convolutions, _IEEE Transactions on Neural Networks and Learning Systems_, 2022 [[Paper](https://ieeexplore.ieee.org/document/9983846)][[GitHub](https://github.com/elegan23/hypernets)].
 * Hypercomplex Image-to-Image Translation, _IJCNN_, 2022 [[Paper](https://ieeexplore.ieee.org/document/9892119)][[GitHub](https://github.com/ispamm/HI2I)]
